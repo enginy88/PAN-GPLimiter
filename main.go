@@ -13,7 +13,7 @@ var appSett app.AppSettStruct
 func main() {
 
 	start := time.Now()
-	app.LogInfo.Println("HELLO MSG: Welcome to PAN-GPLimiter v1.0 by EY")
+	app.LogInfo.Println("HELLO MSG: Welcome to PAN-GPLimiter v1.1 by EY")
 
 	appSett = app.GetAppSett()
 

@@ -57,7 +57,7 @@ func RunAPIJobs(appSettParam app.AppSettStruct) {
 	if err != nil {
 		app.LogErr.Fatalln(err)
 	}
-	app.LogInfo.Println("DUPPLICATE LIST: " + string(duplicateUsersJSON))
+	app.LogInfo.Println("DUPLICATE LIST: " + string(duplicateUsersJSON))
 
 	usersToKick := duplicateUsers.findUsersToKick()
 
@@ -175,7 +175,7 @@ func getDuplicateUsers() (duplicateUsers UserSlice) {
 
 		whiteSpaceRegex := regexp.MustCompile(`\s+`)
 		respString := whiteSpaceRegex.ReplaceAllString(string(resp), " ")
-		app.LogErr.Fatalln(string(respString))
+		app.LogErr.Fatalln(respString)
 
 	}
 
