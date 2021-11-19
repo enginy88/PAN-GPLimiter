@@ -2,6 +2,7 @@ package api
 
 import (
 	"pan-gplimiter/app"
+	"sync"
 
 	"crypto/tls"
 	"encoding/json"
@@ -70,9 +71,14 @@ func RunAPIJobs(appSettParam app.AppSettStruct) {
 	if !appSett.DryRun {
 		usersToKick.kickAll()
 	}
+
 }
 
-func (user User) kickUser() {
+func (user User) kickUser(wg *sync.WaitGroup) {
+
+	if appSett.MultiThread {
+		defer wg.Done()
+	}
 
 	var cmd string
 
@@ -114,11 +120,20 @@ func (user User) kickUser() {
 
 func (usersToKick UserSlice) kickAll() {
 
+	var wg sync.WaitGroup
+
 	for _, item := range usersToKick {
 
-		item.kickUser()
+		if appSett.MultiThread {
+			wg.Add(1)
+			go item.kickUser(&wg)
+		} else {
+			item.kickUser(&wg)
+		}
 
 	}
+
+	wg.Wait()
 
 }
 

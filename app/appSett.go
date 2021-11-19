@@ -8,11 +8,12 @@ import (
 )
 
 const (
-	defaultMaxLogin   = 1
-	defaultVsysNo     = 1
-	defaultSkipVerify = false
-	defaultLogSilence = false
-	defaultDryRun     = false
+	defaultMaxLogin    = 1
+	defaultVsysNo      = 1
+	defaultSkipVerify  = false
+	defaultLogSilence  = false
+	defaultDryRun      = false
+	defaultMultiThread = false
 )
 
 type AppSettStruct struct {
@@ -25,6 +26,7 @@ type AppSettStruct struct {
 	SkipVerify    bool     `config:"PANGPLIMITER_SKIP_VERIFY"`
 	LogSilence    bool     `config:"PANGPLIMITER_LOG_SILENCE"`
 	DryRun        bool     `config:"PANGPLIMITER_DRY_RUN"`
+	MultiThread   bool     `config:"PANGPLIMITER_MULTI_THREAD"`
 }
 
 var appSett AppSettStruct
@@ -57,8 +59,13 @@ func checkAppSett() {
 	if appSett.DryRun == true {
 		LogWarn.Println("CONFIG MSG: DryRun object value set to ('" + strconv.FormatBool(appSett.DryRun) + "'), no users going to be kicked.")
 	}
+
 	if appSett.SkipVerify == true {
 		LogWarn.Println("CONFIG MSG: SkipVerify object value set to ('" + strconv.FormatBool(appSett.SkipVerify) + "'), which may be led to security risks.")
+	}
+
+	if appSett.MultiThread == true {
+		LogWarn.Println("CONFIG MSG: MultiThread object value set to ('" + strconv.FormatBool(appSett.MultiThread) + "'), parallel processing is enabled.")
 	}
 
 	if len(appSett.FirewallHost) < 1 || len(appSett.FirewallHost) > 31 {
