@@ -6,9 +6,11 @@ import (
 
 	"crypto/tls"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -20,7 +22,7 @@ import (
 
 var appSett app.AppSettStruct
 
-type User struct {
+type Session struct {
 	Primary   string
 	Domain    string
 	Username  string
@@ -28,15 +30,15 @@ type User struct {
 	LoginTime int
 }
 
-type UserSlice []User
+type SessionSlice []Session
 
-func (a UserSlice) Len() int           { return len(a) }
-func (a UserSlice) Less(i, j int) bool { return a[i].LoginTime < a[j].LoginTime }
-func (a UserSlice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a SessionSlice) Len() int           { return len(a) }
+func (a SessionSlice) Less(i, j int) bool { return a[i].LoginTime < a[j].LoginTime }
+func (a SessionSlice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-func (duplicateUsers UserSlice) sortByTime() {
+func (duplicateSessions SessionSlice) sortByTime() {
 
-	sort.Sort(duplicateUsers)
+	sort.Sort(duplicateSessions)
 
 }
 
@@ -50,31 +52,31 @@ func RunAPIJobs(appSettParam app.AppSettStruct) {
 	}
 	app.LogInfo.Println("RUNNING CONFIG: " + string(appSettJSON))
 
-	duplicateUsers := getDuplicateUsers()
+	duplicateSessions := getDuplicateSessions()
 
-	duplicateUsers.sortByTime()
+	duplicateSessions.sortByTime()
 
-	duplicateUsersJSON, err := json.Marshal(duplicateUsers)
+	duplicateSessionsJSON, err := json.Marshal(duplicateSessions)
 	if err != nil {
 		app.LogErr.Fatalln(err)
 	}
-	app.LogInfo.Println("DUPLICATE LIST: " + string(duplicateUsersJSON))
+	app.LogInfo.Println("DUPLICATE LIST: (" + strconv.Itoa(len(duplicateSessions)) + " records) " + string(duplicateSessionsJSON))
 
-	usersToKick := duplicateUsers.findUsersToKick()
+	sessionsToKick := duplicateSessions.findSessionsToKick()
 
-	usersToKickJSON, err := json.Marshal(usersToKick)
+	sessionsToKickJSON, err := json.Marshal(sessionsToKick)
 	if err != nil {
 		app.LogErr.Fatalln(err)
 	}
-	app.LogInfo.Println("KICK LIST: " + string(usersToKickJSON))
+	app.LogInfo.Println("KICK LIST: (" + strconv.Itoa(len(sessionsToKick)) + " records) " + string(sessionsToKickJSON))
 
 	if !appSett.DryRun {
-		usersToKick.kickAll()
+		sessionsToKick.kickAll()
 	}
 
 }
 
-func (user User) kickUser(wg *sync.WaitGroup) {
+func (session Session) kickSession(wg *sync.WaitGroup) {
 
 	if appSett.MultiThread {
 		defer wg.Done()
@@ -82,16 +84,21 @@ func (user User) kickUser(wg *sync.WaitGroup) {
 
 	var cmd string
 
-	if user.Domain != "" {
+	if session.Domain != "" {
 
-		cmd = "<request><global-protect-gateway><client-logout><gateway>" + appSett.GPGateway + "-N</gateway><reason>force-logout</reason><user>" + user.Username + "</user><computer>" + user.Computer + "</computer><domain>" + user.Domain + "</domain></client-logout></global-protect-gateway></request>"
+		cmd = "<request><global-protect-gateway><client-logout><gateway>" + appSett.GPGateway + "-N</gateway><reason>force-logout</reason><user>" + session.Username + "</user><computer>" + session.Computer + "</computer><domain>" + session.Domain + "</domain></client-logout></global-protect-gateway></request>"
 
 	} else {
 
-		cmd = "<request><global-protect-gateway><client-logout><gateway>" + appSett.GPGateway + "-N</gateway><reason>force-logout</reason><user>" + user.Username + "</user><computer>" + user.Computer + "</computer></client-logout></global-protect-gateway></request>"
+		cmd = "<request><global-protect-gateway><client-logout><gateway>" + appSett.GPGateway + "-N</gateway><reason>force-logout</reason><user>" + session.Username + "</user><computer>" + session.Computer + "</computer></client-logout></global-protect-gateway></request>"
 	}
 
-	resp := callAPI(cmd)
+	ok, resp := callAPI(cmd, appSett.FailOnError)
+
+	if !ok {
+		app.LogWarn.Println("KICK ERROR: " + string(resp))
+		return
+	}
 
 	xml, err := xmlquery.Parse(strings.NewReader(string(resp)))
 	if err != nil {
@@ -108,27 +115,27 @@ func (user User) kickUser(wg *sync.WaitGroup) {
 
 	} else {
 
-		KickedUserJSON, err := json.Marshal(user)
+		KickedSessionJSON, err := json.Marshal(session)
 		if err != nil {
 			app.LogErr.Fatalln(err)
 		}
-		app.LogInfo.Println("KICKED LOGIN: " + string(KickedUserJSON))
+		app.LogInfo.Println("KICKED LOGIN: " + string(KickedSessionJSON))
 
 	}
 
 }
 
-func (usersToKick UserSlice) kickAll() {
+func (sessionsToKick SessionSlice) kickAll() {
 
 	var wg sync.WaitGroup
 
-	for _, item := range usersToKick {
+	for _, session := range sessionsToKick {
 
 		if appSett.MultiThread {
 			wg.Add(1)
-			go item.kickUser(&wg)
+			go session.kickSession(&wg)
 		} else {
-			item.kickUser(&wg)
+			session.kickSession(&wg)
 		}
 
 	}
@@ -137,49 +144,101 @@ func (usersToKick UserSlice) kickAll() {
 
 }
 
-func (duplicateUsers UserSlice) findUsersToKick() (usersToKick UserSlice) {
+func (duplicateSessions SessionSlice) findSessionsToKick() (sessionsToKick SessionSlice) {
 
 	primaryMap := make(map[string]int)
 
-	for _, item := range duplicateUsers {
+	for _, session := range duplicateSessions {
 
-		count, exist := primaryMap[item.Primary]
+		count, exist := primaryMap[session.Primary]
 
 		if exist {
-			primaryMap[item.Primary] += 1
+			primaryMap[session.Primary] += 1
 		} else {
-			primaryMap[item.Primary] = 1
+			primaryMap[session.Primary] = 1
 			continue
 		}
 
-		_, found := app.FindString(appSett.ExcludedUsers, item.Primary)
+		_, found := app.FindString(appSett.ExcludedUsers, session.Primary)
 
 		if found {
 
-			ExcludedUserJSON, err := json.Marshal(item)
+			ExcludedUsersJSON, err := json.Marshal(session)
 			if err != nil {
 				app.LogErr.Fatalln(err)
 			}
-			app.LogInfo.Println("EXCLUDED LOGIN: " + string(ExcludedUserJSON))
+			app.LogInfo.Println("EXCLUDED LOGIN: " + string(ExcludedUsersJSON))
 
 			continue
 		}
 
 		if count+1 > appSett.MaxLogin {
-			usersToKick = append(usersToKick, item)
+			sessionsToKick = append(sessionsToKick, session)
 		}
 
 	}
 
-	return usersToKick
+	return sessionsToKick
 }
 
-func getDuplicateUsers() (duplicateUsers UserSlice) {
+func (allSessions SessionSlice) calculateDuplicates() (duplicateSessions SessionSlice) {
 
-	cmd := "<show><global-protect-gateway><current-user><gateway>" + appSett.GPGateway + "</gateway></current-user></global-protect-gateway></show>"
-	resp := callAPI(cmd)
+	for i, session := range allSessions {
 
-	xml, err := xmlquery.Parse(strings.NewReader(string(resp)))
+		found := false
+
+		for _, s := range allSessions[:i] {
+			if s.Primary == session.Primary {
+				found = true
+				break
+			}
+		}
+
+		if found {
+			duplicateSessions = append(duplicateSessions, session)
+			continue
+		}
+
+		for _, s := range allSessions[i+1:] {
+			if s.Primary == session.Primary {
+				found = true
+				break
+			}
+		}
+
+		if found {
+			duplicateSessions = append(duplicateSessions, session)
+			continue
+		}
+
+	}
+
+	return duplicateSessions
+
+}
+
+func getDuplicateSessions() (duplicateSessions SessionSlice) {
+
+	var allSessions SessionSlice
+	var input io.Reader
+	var resp []byte
+
+	if appSett.FileTest == true {
+		file, err := os.Open("./test.xml")
+		if err != nil {
+			app.LogErr.Fatalln(err)
+		}
+		defer file.Close()
+		input = file
+
+	} else {
+		cmd := "<show><global-protect-gateway><current-user><gateway>" + appSett.GPGateway + "</gateway></current-user></global-protect-gateway></show>"
+		_, resp := callAPI(cmd, true)
+		input = strings.NewReader(string(resp))
+
+	}
+
+	xml, err := xmlquery.Parse(input)
 	if err != nil {
 		app.LogErr.Fatalln(err)
 	}
@@ -188,13 +247,17 @@ func getDuplicateUsers() (duplicateUsers UserSlice) {
 
 	if result == nil {
 
-		whiteSpaceRegex := regexp.MustCompile(`\s+`)
-		respString := whiteSpaceRegex.ReplaceAllString(string(resp), " ")
-		app.LogErr.Fatalln(respString)
+		if appSett.FileTest == true {
+			app.LogErr.Fatalln("Not an expected XML File!")
+		} else {
+			whiteSpaceRegex := regexp.MustCompile(`\s+`)
+			respString := whiteSpaceRegex.ReplaceAllString(string(resp), " ")
+			app.LogErr.Fatalln(respString)
+		}
 
 	}
 
-	for _, iter := range xmlquery.Find(result, "/entry[primary-username][domain][username][computer][login-time-utc][primary-username=following-sibling::entry/primary-username or primary-username=preceding-sibling::entry/primary-username]") {
+	for _, iter := range xmlquery.Find(result, "/entry[primary-username][domain][username][computer][login-time-utc]") {
 
 		primary := iter.SelectElement("primary-username").InnerText()
 		domain := iter.SelectElement("domain").InnerText()
@@ -205,29 +268,34 @@ func getDuplicateUsers() (duplicateUsers UserSlice) {
 			app.LogErr.Fatalln(err)
 		}
 
-		duplicateUsers = append(duplicateUsers, User{Primary: primary, Domain: domain, Username: username, Computer: computer, LoginTime: logintime})
+		allSessions = append(allSessions, Session{Primary: primary, Domain: domain, Username: username, Computer: computer, LoginTime: logintime})
 
 	}
 
-	return duplicateUsers
+	duplicateSessions = allSessions.calculateDuplicates()
+
+	return duplicateSessions
 
 }
 
-func callAPI(cmd string) (xml []byte) {
+func callAPI(cmd string, fatal bool) (ok bool, xml []byte) {
 
 	transport := &(*http.DefaultTransport.(*http.Transport))
 	if appSett.SkipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
-	timeout := time.Duration(5 * time.Second)
+	timeout := time.Duration(10 * time.Second)
 	client := &http.Client{Transport: transport, Timeout: timeout}
 
 	url := "https://" + appSett.FirewallHost + "/api/?key=" + appSett.ApiKey + "&type=op&vsys=vsys" + strconv.Itoa(appSett.VsysNo) + "&cmd=" + url.PathEscape(cmd)
 
 	response, err := client.Get(url)
 	if err != nil {
-		app.LogErr.Fatalln(err)
+		if fatal == true {
+			app.LogErr.Fatalln(err)
+		}
+		return false, []byte(err.Error())
 	}
 
 	defer response.Body.Close()
@@ -237,6 +305,6 @@ func callAPI(cmd string) (xml []byte) {
 		app.LogErr.Fatalln(err)
 	}
 
-	return body
+	return true, body
 
 }

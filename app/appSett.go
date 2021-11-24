@@ -12,8 +12,10 @@ const (
 	defaultVsysNo      = 1
 	defaultSkipVerify  = false
 	defaultLogSilence  = false
-	defaultDryRun      = false
 	defaultMultiThread = false
+	defaultFailOnError = false
+	defaultDryRun      = false
+	defaultFileTest    = false
 )
 
 type AppSettStruct struct {
@@ -25,8 +27,10 @@ type AppSettStruct struct {
 	ExcludedUsers []string `config:"PANGPLIMITER_EXCLUDED_USERS"`
 	SkipVerify    bool     `config:"PANGPLIMITER_SKIP_VERIFY"`
 	LogSilence    bool     `config:"PANGPLIMITER_LOG_SILENCE"`
-	DryRun        bool     `config:"PANGPLIMITER_DRY_RUN"`
 	MultiThread   bool     `config:"PANGPLIMITER_MULTI_THREAD"`
+	FailOnError   bool     `config:"PANGPLIMITER_FAIL_ONERROR"`
+	DryRun        bool     `config:"PANGPLIMITER_DRY_RUN"`
+	FileTest      bool     `config:"PANGPLIMITER_FILE_TEST"`
 }
 
 var appSett AppSettStruct
@@ -56,46 +60,56 @@ func checkAppSett() {
 		LogInfo.SetOutput(ioutil.Discard)
 	}
 
-	if appSett.DryRun == true {
-		LogWarn.Println("CONFIG MSG: DryRun object value set to ('" + strconv.FormatBool(appSett.DryRun) + "'), no users going to be kicked.")
-	}
-
-	if appSett.SkipVerify == true {
-		LogWarn.Println("CONFIG MSG: SkipVerify object value set to ('" + strconv.FormatBool(appSett.SkipVerify) + "'), which may be led to security risks.")
-	}
-
-	if appSett.MultiThread == true {
-		LogWarn.Println("CONFIG MSG: MultiThread object value set to ('" + strconv.FormatBool(appSett.MultiThread) + "'), parallel processing is enabled.")
-	}
-
-	if len(appSett.FirewallHost) < 1 || len(appSett.FirewallHost) > 31 {
-		LogErr.Fatalln("FirewallHost object ('" + appSett.FirewallHost + "') should has more than 1 chars and less than 31 chars!")
-	}
-	if !isValidHost(appSett.FirewallHost) {
-		LogErr.Fatalln("FirewallHost object ('" + appSett.FirewallHost + "') should only contains alphanumeric chars with space & dash & underscore!")
-	}
-
-	if len(appSett.ApiKey) < 0 {
-		LogErr.Fatalln("ApiKey object ('" + appSett.ApiKey + "') should has more than 1 chars chars!")
-	}
-	if !isValidBase64(appSett.ApiKey) {
-		LogErr.Fatalln("ApiKey object ('" + appSett.ApiKey + "') should only contains alphanumeric chars with plus & slash & equal!")
-	}
-
-	if len(appSett.GPGateway) < 0 {
-		LogErr.Fatalln("GPGateway object ('" + appSett.GPGateway + "') should has more than 1 chars chars!")
-	}
-	if !isValidName(appSett.GPGateway) {
-		LogErr.Fatalln("GPGateway object ('" + appSett.GPGateway + "') should only contains alphanumeric chars with dot & colon!")
-	}
-
-	if appSett.VsysNo != 0 {
-		if appSett.VsysNo < 0 || appSett.VsysNo > 255 {
-			LogErr.Fatalln("VsysNo object value ('" + strconv.Itoa(appSett.VsysNo) + "') should be between 1 & 255!")
-		}
+	if appSett.FileTest == true {
+		appSett.DryRun = true
+		LogWarn.Println("CONFIG MSG: FileTest object value set to ('" + strconv.FormatBool(appSett.MultiThread) + "'), no api call will be run.")
 	} else {
-		appSett.VsysNo = defaultVsysNo
-		LogWarn.Println("CONFIG MSG: Using default value ('" + strconv.Itoa(appSett.VsysNo) + "') for VsysNo object value.")
+
+		if appSett.DryRun == true {
+			LogWarn.Println("CONFIG MSG: DryRun object value set to ('" + strconv.FormatBool(appSett.DryRun) + "'), no users going to be kicked.")
+		}
+
+		if appSett.SkipVerify == true {
+			LogWarn.Println("CONFIG MSG: SkipVerify object value set to ('" + strconv.FormatBool(appSett.SkipVerify) + "'), which may be led to security risks.")
+		}
+
+		if appSett.MultiThread == true {
+			LogWarn.Println("CONFIG MSG: MultiThread object value set to ('" + strconv.FormatBool(appSett.MultiThread) + "'), parallel processing is enabled.")
+		}
+
+		if appSett.FailOnError == true {
+			LogWarn.Println("CONFIG MSG: FailOnError object value set to ('" + strconv.FormatBool(appSett.MultiThread) + "'), fail on first error is enabled.")
+		}
+
+		if len(appSett.FirewallHost) < 1 || len(appSett.FirewallHost) > 31 {
+			LogErr.Fatalln("FirewallHost object ('" + appSett.FirewallHost + "') should has more than 1 chars and less than 31 chars!")
+		}
+		if !isValidHost(appSett.FirewallHost) {
+			LogErr.Fatalln("FirewallHost object ('" + appSett.FirewallHost + "') should only contains alphanumeric chars with space & dash & underscore!")
+		}
+
+		if len(appSett.ApiKey) < 0 {
+			LogErr.Fatalln("ApiKey object ('" + appSett.ApiKey + "') should has more than 1 chars chars!")
+		}
+		if !isValidBase64(appSett.ApiKey) {
+			LogErr.Fatalln("ApiKey object ('" + appSett.ApiKey + "') should only contains alphanumeric chars with plus & slash & equal!")
+		}
+
+		if len(appSett.GPGateway) < 0 {
+			LogErr.Fatalln("GPGateway object ('" + appSett.GPGateway + "') should has more than 1 chars chars!")
+		}
+		if !isValidName(appSett.GPGateway) {
+			LogErr.Fatalln("GPGateway object ('" + appSett.GPGateway + "') should only contains alphanumeric chars with dot & colon!")
+		}
+
+		if appSett.VsysNo != 0 {
+			if appSett.VsysNo < 0 || appSett.VsysNo > 255 {
+				LogErr.Fatalln("VsysNo object value ('" + strconv.Itoa(appSett.VsysNo) + "') should be between 1 & 255!")
+			}
+		} else {
+			appSett.VsysNo = defaultVsysNo
+			LogWarn.Println("CONFIG MSG: Using default value ('" + strconv.Itoa(appSett.VsysNo) + "') for VsysNo object value.")
+		}
 	}
 
 	if appSett.MaxLogin != 0 {
