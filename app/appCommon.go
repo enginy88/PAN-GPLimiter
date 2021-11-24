@@ -9,12 +9,14 @@ import (
 var LogErr *log.Logger
 var LogWarn *log.Logger
 var LogInfo *log.Logger
+var LogAlways *log.Logger
 
 func init() {
 
 	LogErr = log.New(os.Stderr, "(PAN-GPLIMITER) ERROR: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
 	LogWarn = log.New(os.Stdout, "(PAN-GPLIMITER) WARNING: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
 	LogInfo = log.New(os.Stdout, "(PAN-GPLIMITER) INFO: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	LogAlways = log.New(os.Stdout, "(PAN-GPLIMITER) ALWAYS: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
 
 }
 
