@@ -2,7 +2,6 @@ package api
 
 import (
 	"pan-gplimiter/app"
-	"sync"
 
 	"crypto/tls"
 	"encoding/json"
@@ -15,12 +14,16 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/antchfx/xmlquery"
+	"github.com/panjf2000/ants"
 )
 
 var appSett app.AppSettStruct
+
+type taskFunc func()
 
 type Session struct {
 	Primary   string
@@ -76,11 +79,18 @@ func RunAPIJobs(appSettParam app.AppSettStruct) {
 
 }
 
-func (session Session) kickSession(wg *sync.WaitGroup) {
+func taskFuncWrapper(session Session, wg *sync.WaitGroup) taskFunc {
 
-	if appSett.MultiThread {
-		defer wg.Done()
+	return func() {
+
+		session.kickSession()
+		wg.Done()
+
 	}
+
+}
+
+func (session Session) kickSession() {
 
 	var cmd string
 
@@ -102,7 +112,11 @@ func (session Session) kickSession(wg *sync.WaitGroup) {
 
 	xml, err := xmlquery.Parse(strings.NewReader(string(resp)))
 	if err != nil {
-		app.LogErr.Fatalln(err)
+		if appSett.FailOnError == true {
+			app.LogErr.Fatalln(err)
+		}
+		app.LogWarn.Println("KICK ERROR: " + err.Error() + " RESPONSE: " + string(resp))
+		return
 	}
 
 	result := xmlquery.FindOne(xml, "/response[@status=\"success\"]/result/response[@status=\"success\"]")
@@ -127,20 +141,30 @@ func (session Session) kickSession(wg *sync.WaitGroup) {
 
 func (sessionsToKick SessionSlice) kickAll() {
 
-	var wg sync.WaitGroup
+	if appSett.MultiThread {
 
-	for _, session := range sessionsToKick {
+		var wg sync.WaitGroup
+		wp, _ := ants.NewPool(10)
+		defer wp.Release()
 
-		if appSett.MultiThread {
+		for _, session := range sessionsToKick {
+
 			wg.Add(1)
-			go session.kickSession(&wg)
-		} else {
-			session.kickSession(&wg)
+			wp.Submit(taskFuncWrapper(session, &wg))
+
+		}
+
+		wg.Wait()
+
+	} else {
+
+		for _, session := range sessionsToKick {
+
+			session.kickSession()
+
 		}
 
 	}
-
-	wg.Wait()
 
 }
 
@@ -278,7 +302,7 @@ func getDuplicateSessions() (duplicateSessions SessionSlice) {
 
 }
 
-func callAPI(cmd string, fatal bool) (ok bool, xml []byte) {
+func callAPI(cmd string, failOnError bool) (ok bool, xml []byte) {
 
 	transport := &(*http.DefaultTransport.(*http.Transport))
 	if appSett.SkipVerify {
@@ -292,7 +316,7 @@ func callAPI(cmd string, fatal bool) (ok bool, xml []byte) {
 
 	response, err := client.Get(url)
 	if err != nil {
-		if fatal == true {
+		if failOnError == true {
 			app.LogErr.Fatalln(err)
 		}
 		return false, []byte(err.Error())
