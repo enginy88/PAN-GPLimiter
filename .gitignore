@@ -2,4 +2,5 @@
 PAN-GPLimiter
 bin/
 .idea/
-
+go.mod
+go.sum

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"pan-gplimiter/app"
+	"PAN-GPLimiter/app"
 
 	"crypto/tls"
 	"encoding/json"

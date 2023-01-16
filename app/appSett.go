@@ -1,7 +1,7 @@
 package app
 
 import (
-	"io/ioutil"
+	"io"
 	"strconv"
 
 	"github.com/JeremyLoy/config"
@@ -56,8 +56,8 @@ func loadAppSett() {
 func checkAppSett() {
 
 	if appSett.LogSilence == true {
-		LogWarn.SetOutput(ioutil.Discard)
-		LogInfo.SetOutput(ioutil.Discard)
+		LogWarn.SetOutput(io.Discard)
+		LogInfo.SetOutput(io.Discard)
 	}
 
 	if appSett.FileTest == true {
