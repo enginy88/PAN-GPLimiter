@@ -11,6 +11,8 @@ const (
 	defaultMaxLogin    = 1
 	defaultVsysNo      = 1
 	defaultSkipVerify  = false
+	defaultKickOldest  = false
+	defaultListAll     = false
 	defaultLogSilence  = false
 	defaultMultiThread = false
 	defaultFailOnError = false
@@ -26,6 +28,8 @@ type AppSettStruct struct {
 	MaxLogin      int      `config:"PANGPLIMITER_MAX_LOGIN"`
 	ExcludedUsers []string `config:"PANGPLIMITER_EXCLUDED_USERS"`
 	SkipVerify    bool     `config:"PANGPLIMITER_SKIP_VERIFY"`
+	KickOldest    bool     `config:"PANGPLIMITER_KICK_OLDEST"`
+	ListAll       bool     `config:"PANGPLIMITER_LIST_ALL"`
 	LogSilence    bool     `config:"PANGPLIMITER_LOG_SILENCE"`
 	MultiThread   bool     `config:"PANGPLIMITER_MULTI_THREAD"`
 	FailOnError   bool     `config:"PANGPLIMITER_FAIL_ONERROR"`
@@ -46,7 +50,7 @@ func GetAppSett() AppSettStruct {
 
 func loadAppSett() {
 
-	err := config.From("appsett.env").FromEnv().To(&appSett)
+	err := config.From("./appsett.env").FromEnv().To(&appSett)
 	if err != nil {
 		LogErr.Fatalln("Cannot find/load 'appsett.env' file! (" + err.Error() + ")")
 	}
@@ -71,6 +75,14 @@ func checkAppSett() {
 
 		if appSett.SkipVerify == true {
 			LogWarn.Println("CONFIG MSG: SkipVerify object value set to ('" + strconv.FormatBool(appSett.SkipVerify) + "'), which may be led to security risks.")
+		}
+
+		if appSett.KickOldest == true {
+			LogWarn.Println("CONFIG MSG: KickOldest object value set to ('" + strconv.FormatBool(appSett.KickOldest) + "'), oldest sessions going to be kickeed.")
+		}
+
+		if appSett.ListAll == true {
+			LogWarn.Println("CONFIG MSG: ListAll object value set to ('" + strconv.FormatBool(appSett.ListAll) + "'), all active sessions going to be listed.")
 		}
 
 		if appSett.MultiThread == true {

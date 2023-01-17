@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -21,6 +20,7 @@ import (
 	"github.com/panjf2000/ants"
 )
 
+var appFlag app.AppFlagStruct
 var appSett app.AppSettStruct
 
 type taskFunc func()
@@ -35,19 +35,19 @@ type Session struct {
 
 type SessionSlice []Session
 
-func (a SessionSlice) Len() int           { return len(a) }
-func (a SessionSlice) Less(i, j int) bool { return a[i].LoginTime < a[j].LoginTime }
-func (a SessionSlice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
 func (duplicateSessions SessionSlice) sortByTime() {
 
-	sort.Sort(duplicateSessions)
-
+	if appSett.KickOldest == true {
+		sort.Slice(duplicateSessions, func(i, j int) bool { return duplicateSessions[i].LoginTime > duplicateSessions[j].LoginTime })
+	} else {
+		sort.Slice(duplicateSessions, func(i, j int) bool { return duplicateSessions[i].LoginTime < duplicateSessions[j].LoginTime })
+	}
 }
 
-func RunAPIJobs(appSettParam app.AppSettStruct) {
+func RunAPIJobs(appFlagParam app.AppFlagStruct, appSettParam app.AppSettStruct) {
 
 	appSett = appSettParam
+	appFlag = appFlagParam
 
 	appSettJSON, err := json.Marshal(appSett)
 	if err != nil {
@@ -55,7 +55,17 @@ func RunAPIJobs(appSettParam app.AppSettStruct) {
 	}
 	app.LogInfo.Println("RUNNING CONFIG: " + string(appSettJSON))
 
-	duplicateSessions := getDuplicateSessions()
+	activeSessions := getActiveSessions()
+
+	if appSett.ListAll == true {
+		activeSessionsJSON, err := json.Marshal(activeSessions)
+		if err != nil {
+			app.LogErr.Fatalln(err)
+		}
+		app.LogInfo.Println("ACTIVE LIST: (" + strconv.Itoa(len(activeSessions)) + " records) " + string(activeSessionsJSON))
+	}
+
+	duplicateSessions := activeSessions.calculateDuplicates()
 
 	duplicateSessions.sortByTime()
 
@@ -205,13 +215,13 @@ func (duplicateSessions SessionSlice) findSessionsToKick() (sessionsToKick Sessi
 	return sessionsToKick
 }
 
-func (allSessions SessionSlice) calculateDuplicates() (duplicateSessions SessionSlice) {
+func (activeSessions SessionSlice) calculateDuplicates() (duplicateSessions SessionSlice) {
 
-	for i, session := range allSessions {
+	for i, session := range activeSessions {
 
 		found := false
 
-		for _, s := range allSessions[:i] {
+		for _, s := range activeSessions[:i] {
 			if s.Primary == session.Primary {
 				found = true
 				break
@@ -223,7 +233,7 @@ func (allSessions SessionSlice) calculateDuplicates() (duplicateSessions Session
 			continue
 		}
 
-		for _, s := range allSessions[i+1:] {
+		for _, s := range activeSessions[i+1:] {
 			if s.Primary == session.Primary {
 				found = true
 				break
@@ -241,9 +251,8 @@ func (allSessions SessionSlice) calculateDuplicates() (duplicateSessions Session
 
 }
 
-func getDuplicateSessions() (duplicateSessions SessionSlice) {
+func getActiveSessions() (activeSessions SessionSlice) {
 
-	var allSessions SessionSlice
 	var input io.Reader
 	var resp []byte
 
@@ -292,19 +301,17 @@ func getDuplicateSessions() (duplicateSessions SessionSlice) {
 			app.LogErr.Fatalln(err)
 		}
 
-		allSessions = append(allSessions, Session{Primary: primary, Domain: domain, Username: username, Computer: computer, LoginTime: logintime})
+		activeSessions = append(activeSessions, Session{Primary: primary, Domain: domain, Username: username, Computer: computer, LoginTime: logintime})
 
 	}
 
-	duplicateSessions = allSessions.calculateDuplicates()
-
-	return duplicateSessions
+	return activeSessions
 
 }
 
 func callAPI(cmd string, failOnError bool) (ok bool, xml []byte) {
 
-	transport := &(*http.DefaultTransport.(*http.Transport))
+	transport := http.DefaultTransport.(*http.Transport)
 	if appSett.SkipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
@@ -324,7 +331,7 @@ func callAPI(cmd string, failOnError bool) (ok bool, xml []byte) {
 
 	defer response.Body.Close()
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		app.LogErr.Fatalln(err)
 	}
