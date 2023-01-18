@@ -26,10 +26,10 @@ Because it (cross) compiles into machine code! You can directly run ready-to-go 
 
 Even I didn't think that those are show blockers, here is my todo list to make this program top-notch:
 
-- [ ] Program argument for path to config file: to select config file different then working directory.
-- [ ] Daemon mode: to get rid of Cron/Task Scheduler.
+- [x] Program argument for path to config file: to select config file different then working directory.
 - [ ] Remove oldest sessions: to provide an option instead of kicking out the newest ones.
 - [ ] Separate Mgmt IP support: to provide an alternative way to communicate with HA peers.
+- [ ] Daemon mode: to get rid of Cron/Task Scheduler.
 - [ ] Syslog and EventLog support: to write logs to OS when daemonized.
 
 
