@@ -37,9 +37,12 @@ type AppSettStruct struct {
 	FileTest      bool     `config:"PANGPLIMITER_FILE_TEST"`
 }
 
-var appSett AppSettStruct
+var appSett *AppSettStruct
 
-func GetAppSett() AppSettStruct {
+func GetAppSett() *AppSettStruct {
+
+	appSettObject := new(AppSettStruct)
+	appSett = appSettObject
 
 	loadAppSett()
 	checkAppSett()
@@ -50,7 +53,7 @@ func GetAppSett() AppSettStruct {
 
 func loadAppSett() {
 
-	err := config.From("./appsett.env").FromEnv().To(&appSett)
+	err := config.From("./appsett.env").FromEnv().To(appSett)
 	if err != nil {
 		LogErr.Fatalln("Cannot find/load 'appsett.env' file! (" + err.Error() + ")")
 	}
@@ -93,21 +96,21 @@ func checkAppSett() {
 			LogWarn.Println("CONFIG MSG: FailOnError object value set to ('" + strconv.FormatBool(appSett.MultiThread) + "'), fail on first error is enabled.")
 		}
 
-		if len(appSett.FirewallHost) < 1 || len(appSett.FirewallHost) > 31 {
+		if len(appSett.FirewallHost) < 2 || len(appSett.FirewallHost) > 31 {
 			LogErr.Fatalln("FirewallHost object ('" + appSett.FirewallHost + "') should has more than 1 chars and less than 31 chars!")
 		}
 		if !isValidHost(appSett.FirewallHost) {
 			LogErr.Fatalln("FirewallHost object ('" + appSett.FirewallHost + "') should only contains alphanumeric chars with space & dash & underscore!")
 		}
 
-		if len(appSett.ApiKey) < 0 {
+		if len(appSett.ApiKey) < 2 {
 			LogErr.Fatalln("ApiKey object ('" + appSett.ApiKey + "') should has more than 1 chars chars!")
 		}
 		if !isValidBase64(appSett.ApiKey) {
 			LogErr.Fatalln("ApiKey object ('" + appSett.ApiKey + "') should only contains alphanumeric chars with plus & slash & equal!")
 		}
 
-		if len(appSett.GPGateway) < 0 {
+		if len(appSett.GPGateway) < 2 {
 			LogErr.Fatalln("GPGateway object ('" + appSett.GPGateway + "') should has more than 1 chars chars!")
 		}
 		if !isValidName(appSett.GPGateway) {
