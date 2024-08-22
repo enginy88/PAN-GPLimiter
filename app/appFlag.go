@@ -9,9 +9,12 @@ type AppFlagStruct struct {
 	WorkingDir string
 }
 
-var appFlag AppFlagStruct
+var appFlag *AppFlagStruct
 
-func GetAppFlag() AppFlagStruct {
+func GetAppFlag() *AppFlagStruct {
+
+	appFlagObiect := new(AppFlagStruct)
+	appFlag = appFlagObiect
 
 	parseAppFlag()
 	changeWorkingDir()
@@ -22,7 +25,8 @@ func GetAppFlag() AppFlagStruct {
 
 func parseAppFlag() {
 
-	workingDir := flag.String("dir", "", "Path of directory which contains 'appsett.env' file.")
+	workingDir := flag.String("dir", "", "Path of directory which contains 'appsett.env' file. (Optional)")
+
 	flag.Parse()
 
 	appFlag.WorkingDir = *workingDir
