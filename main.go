@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-var appFlag app.AppFlagStruct
-var appSett app.AppSettStruct
+var appFlag *app.AppFlagStruct
+var appSett *app.AppSettStruct
 
 func main() {
 
 	start := time.Now()
-	app.LogAlways.Println("HELLO MSG: Welcome to PAN-GPLimiter v2.5 by EY!")
+	app.LogAlways.Println("HELLO MSG: Welcome to PAN-GPLimiter v2.6 by EY!")
 
 	appFlag = app.GetAppFlag()
 	appSett = app.GetAppSett()
