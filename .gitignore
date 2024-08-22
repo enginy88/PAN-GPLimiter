@@ -4,5 +4,3 @@ bin/
 test/
 .idea/
 .vscode/
-go.mod
-go.sum
