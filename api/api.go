@@ -17,11 +17,11 @@ import (
 	"time"
 
 	"github.com/antchfx/xmlquery"
-	"github.com/panjf2000/ants"
+	"github.com/panjf2000/ants/v2"
 )
 
-var appFlag app.AppFlagStruct
-var appSett app.AppSettStruct
+var appFlag *app.AppFlagStruct
+var appSett *app.AppSettStruct
 
 type taskFunc func()
 
@@ -44,7 +44,7 @@ func (duplicateSessions SessionSlice) sortByTime() {
 	}
 }
 
-func RunAPIJobs(appFlagParam app.AppFlagStruct, appSettParam app.AppSettStruct) {
+func RunAPIJobs(appFlagParam *app.AppFlagStruct, appSettParam *app.AppSettStruct) {
 
 	appSett = appSettParam
 	appFlag = appFlagParam
@@ -154,7 +154,7 @@ func (sessionsToKick SessionSlice) kickAll() {
 	if appSett.MultiThread {
 
 		var wg sync.WaitGroup
-		wp, _ := ants.NewPool(10)
+		wp, _ := ants.NewPool(8)
 		defer wp.Release()
 
 		for _, session := range sessionsToKick {
