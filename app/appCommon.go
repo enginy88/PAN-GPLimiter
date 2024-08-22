@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 )
+
+var AppNameString string
 
 var LogErr *log.Logger
 var LogWarn *log.Logger
@@ -13,10 +16,16 @@ var LogAlways *log.Logger
 
 func init() {
 
-	LogErr = log.New(os.Stderr, "(PAN-GPLIMITER) ERROR: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
-	LogWarn = log.New(os.Stdout, "(PAN-GPLIMITER) WARNING: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
-	LogInfo = log.New(os.Stdout, "(PAN-GPLIMITER) INFO: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
-	LogAlways = log.New(os.Stdout, "(PAN-GPLIMITER) ALWAYS: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		log.Fatalln("FATAL ERROR: Failed to read build info! Please build the binary with module support.")
+	}
+	AppNameString = bi.Path
+
+	LogErr = log.New(os.Stderr, "("+AppNameString+") ERROR: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	LogWarn = log.New(os.Stdout, "("+AppNameString+") WARNING: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	LogInfo = log.New(os.Stdout, "("+AppNameString+") INFO: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
+	LogAlways = log.New(os.Stdout, "("+AppNameString+") ALWAYS: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
 
 }
 
