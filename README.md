@@ -5,7 +5,7 @@ A Go program for limiting concurrent remote user logins in a single GP Gateway o
 
 ## What's the motivation?
 
-This one is maybe the most ever wanted feature request of Global Protect for decades! (FR4603-Concurrent Session Limiting) After tons of FR votes, endless requests from customers, lots of reddit messages asks for workarounds, PAN PMs don't have in the same opinion with the technical guys who are on the field as they haven't green lighted for developers to implement this super easy feature for years.
+This one is maybe the most ever wanted feature request of Global Protect for decades! (FR4603-Concurrent Session Limiting) After tons of FR votes, endless requests from customers, lots of reddit messages asks for workarounds, people who are in charge don't have in the same opinion with the technical guys who are on the field as they haven't green lighted for developers to implement this super easy feature for years.
 
 Finally, I ran out of hope and couldn't remain more indifferent to it. So this forces me to create my own home-brewed solution and I give myself the go-ahead.
 
