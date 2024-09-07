@@ -198,6 +198,10 @@ Even I didn't think that those are show blockers, here is my todo list to make t
 - [ ] Daemon mode: to get rid of Cron/Task Scheduler.
 - [ ] Syslog and EventLog support: to write logs to OS when daemonized.
 
+## Disclaimer: 
+
+Even though I am an official Professional Services Consultant and Technical Trainer, this is my personal weekend project, which means it is not connected in any way with Palo Alto Networks and it is not officially under support or warranty of Palo Alto Networks. Use at your own risk.
+
 
 ## Refs:
 [^1]: https://live.paloaltonetworks.com/t5/general-topics/how-to-limit-concurrent-globalprotect-connections-per-user/td-p/202128
